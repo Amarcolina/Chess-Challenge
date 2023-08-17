@@ -52,6 +52,8 @@ namespace ChessChallenge.Example
 
         public Move Think(Board board, Timer timer)
         {
+            //System.Threading.Thread.Sleep(1000 * 60);
+
             Table.Clear();
             PositionsSearched = 0;
 
