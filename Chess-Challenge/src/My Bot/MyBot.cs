@@ -11,9 +11,10 @@ public class MyBot : IChessBot, IComparer<Move>
 {
 
     public static PieceType[] Pieces = new PieceType[] { PieceType.Pawn, PieceType.Bishop, PieceType.Knight, PieceType.Rook, PieceType.King, PieceType.Queen };
+    public static int[] PieceValue = new int[] { 0, 1, 3, 3, 5, 9, 100 };
 
     public Dictionary<long, (int, Move, long)> Table = new();
-    public Dictionary<long, int> Memory = new();
+    public Dictionary<(long, Move), int> Memory = new();
     public Dictionary<long, string> HashToFen = new();
     public Dictionary<long, string> HashToRep = new();
 
@@ -49,6 +50,7 @@ public class MyBot : IChessBot, IComparer<Move>
     public Move Think(Board board, Timer timer)
     {
         Table.Clear();
+        Memory.Clear();
         PositionsSearched = 0;
 
         long hash = board.IsWhiteToMove ? IsWhiteToMoveHash : 0;
@@ -63,7 +65,7 @@ public class MyBot : IChessBot, IComparer<Move>
         }
 
         (int eval, Move move, long hash) result = default;
-        for (int depth = 1; depth <= 4; depth++)
+        for (int depth = 1; depth <= 5; depth++)
         {
             Table.Clear();
 
@@ -72,15 +74,12 @@ public class MyBot : IChessBot, IComparer<Move>
             Console.WriteLine("Eval at depth: " + depth);
             var result2 = EvalRecursive(timer, board, hash, int.MinValue, int.MaxValue, depth);
 
-            //else
-            //{
-            result = result2;
-            //}
-
             //if (timer.MillisecondsElapsedThisTurn > 1000)
             //{
             //    break;
             //}
+
+            result = result2;
         }
 
 
@@ -97,11 +96,8 @@ public class MyBot : IChessBot, IComparer<Move>
 
     public int Compare(Move x, Move y)
     {
-        long hashDeltaX = GetMoveDelta(x, WhiteInQuestion);
-        long hashDeltaY = GetMoveDelta(y, WhiteInQuestion);
-
-        Memory.TryGetValue(HashInQuestion ^ hashDeltaX, out var memoryX);
-        Memory.TryGetValue(HashInQuestion ^ hashDeltaY, out var memoryY);
+        Memory.TryGetValue((HashInQuestion, x), out var memoryX);
+        Memory.TryGetValue((HashInQuestion, y), out var memoryY);
 
         return (memoryY - memoryX) * MultInQuestion;
     }
@@ -146,29 +142,53 @@ public class MyBot : IChessBot, IComparer<Move>
         }
 
         PositionsSearched++;
-        //if ((PositionsSearched % (1024 * 256)) == 0)
-        //{
-        //Console.WriteLine(PositionsSearched + " : " + depth);
-        //}
+        if ((PositionsSearched % (1024 * 256)) == 0)
+        {
+            Console.WriteLine(PositionsSearched + " : " + depth);
+        }
 
-        int eval = 0;
+        int eval = Eval(board, depth);
+        bool isWinning = board.IsWhiteToMove ? (eval > 0) : (eval < 0);
         Move bestMove = default;
         long chosenHash = hash;
 
         Span<Move> moves = stackalloc Move[128];
         board.GetLegalMovesNonAlloc(ref moves, depth <= 0);
 
+        bool shouldRecurse = true;
         if (moves.Length == 0 || depth <= 0)
         {
-            eval = Eval(board, depth);
-            bestMove = default;
+            shouldRecurse = false;
             chosenHash = hash;
+
+            if (moves.Length > 0)
+            {
+                //If the current board is better than the best we've seen, keep searching
+                //if (board.IsWhiteToMove)
+                //{
+                //    if (eval > alpha)
+                //    {
+                //        shouldRecurse = true;
+                //    }
+                //}
+                //else
+                //{
+                //    if (eval < beta)
+                //    {
+                //        shouldRecurse = true;
+                //    }
+                //}
+                shouldRecurse = true;
+            }
         }
-        else
+
+        if (shouldRecurse)
         {
             HashInQuestion = hash;
             MultInQuestion = board.IsWhiteToMove ? 1 : -1;
             moves.Sort(this);
+
+            bestMove = moves[0];
 
             for (int i = 0; i < moves.Length; i++)
             {
@@ -180,19 +200,49 @@ public class MyBot : IChessBot, IComparer<Move>
                 long hashDelta = GetMoveDelta(moves[i], board.IsWhiteToMove);
 
                 board.MakeMove(moves[i]);
-                hash ^= hashDelta;
+                //hash ^= hashDelta;
 
                 //File.AppendAllText("debug.txt", "{" + depth.ToString() + "".PadLeft(4 - depth) + moves[i].ToString() + "\n");
 
+                //Never consider a repeated position if we are winning
+                if (board.IsRepeatedPosition() && isWinning)
+                {
+                    board.UndoMove(moves[i]);
+                    continue;
+                }
+
+                //string moveText;
+                //if (moves[i].IsCapture)
+                //{
+                //    moveText = " PNBRQK"[(int)moves[i].MovePieceType] + "x" + " PNBRQK"[(int)moves[i].CapturePieceType];
+                //}
+                //else
+                //{
+                //    moveText = moves[i].ToString();
+                //}
+                //File.AppendAllText("debug.txt", depth.ToString().PadLeft(3, '|') + "".PadLeft(4 - depth) + moveText + "\n");
+
+                //If we are past the horizon, don't consider moves where higher-value pieces capture low-value pieces
+                if (depth <= 0 && moves[i].IsCapture)
+                {
+                    int srcValue = PieceValue[(int)moves[i].MovePieceType];
+                    int dstValue = PieceValue[(int)moves[i].CapturePieceType];
+                    if (dstValue < srcValue)
+                    {
+                        board.UndoMove(moves[i]);
+                        continue;
+                    }
+                }
+
                 (var subEval, var subMove, var subHash) = EvalRecursive(timer, board, hash, alpha, beta, depth - 1);
+                Memory[(hash, moves[i])] = subEval;
 
                 //File.AppendAllText("debug.txt", "}" + depth.ToString() + "".PadLeft(4 - depth) + moves[i].ToString() + " : " + subEval.ToString() + "\n");
 
-
-                hash ^= hashDelta;
+                //hash ^= hashDelta;
                 board.UndoMove(moves[i]);
 
-                if (i == 0)
+                if (i == 0 && depth > 0)
                 {
                     eval = subEval;
                     bestMove = moves[i];
@@ -245,7 +295,7 @@ public class MyBot : IChessBot, IComparer<Move>
         }
 
         Table[hash] = (eval, bestMove, chosenHash);
-        Memory[hash] = eval;
+        //Memory[hash] = eval;
         return (eval, bestMove, chosenHash);
     }
 
@@ -271,6 +321,11 @@ public class MyBot : IChessBot, IComparer<Move>
 
     public int Eval(Board board, int depth)
     {
+        if (board.IsRepeatedPosition())
+        {
+            return 0;
+        }
+
         int result;
         if (board.IsInCheckmate())
         {
@@ -303,6 +358,7 @@ public class MyBot : IChessBot, IComparer<Move>
         var knigh = board.GetPieceBitboard(Knight, isWhite);
         var rooks = board.GetPieceBitboard(Rook, isWhite);
         var queen = board.GetPieceBitboard(Queen, isWhite);
+        var kings = board.GetPieceBitboard(King, isWhite);
 
         var king = board.GetKingSquare(isWhite);
         var enemyKing = board.GetKingSquare(!isWhite);
@@ -316,19 +372,37 @@ public class MyBot : IChessBot, IComparer<Move>
         int kingSafety = king.File <= 2 || king.File >= 6 ? 50 : 0 +
                          king.Rank == (isWhite ? 0 : 7) ? 0 : -200;
 
-        int development = PopCount((bisho | knigh) & 0x00FFFFFFFFFFFF00);
+        int development = PopCount((bisho | knigh) & 0x007E7E7E7E7E7E00);
+
+        int kingProtected = ((kings >> 8 | kings << 8) & piece) != 0 ? 1 : 0;
+
+        int knightsActive = PopCount(knigh & 0x00003C3C3C3C0000);
+
+        int doubledPawns = Math.Max(0, PopCount(pawns & 0x80) - 1) +
+                           Math.Max(0, PopCount(pawns & 0x40) - 1) +
+                           Math.Max(0, PopCount(pawns & 0x20) - 1) +
+                           Math.Max(0, PopCount(pawns & 0x10) - 1) +
+                           Math.Max(0, PopCount(pawns & 0x08) - 1) +
+                           Math.Max(0, PopCount(pawns & 0x04) - 1) +
+                           Math.Max(0, PopCount(pawns & 0x02) - 1) +
+                           Math.Max(0, PopCount(pawns & 0x01) - 1);
 
         if ((minorPop + rooksPop) >= 4)
         {
             //Bonus to king in corner of board
             eval += kingSafety;
             eval += development * 10;
+            eval += kingProtected * 50;
+            eval -= doubledPawns * 40;
         }
         else if (minorPop >= 2 && rooksPop > 0 && pawnsPop >= 6)
         {
             //Mid game
             eval += kingSafety;
-            eval += development * 5;
+            eval += development * 15;
+            eval += kingProtected * 50;
+            eval += knightsActive * 20;
+            eval -= doubledPawns * 40;
         }
         else
         {
