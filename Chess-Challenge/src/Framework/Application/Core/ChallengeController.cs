@@ -97,7 +97,7 @@ namespace ChessChallenge.Application
             int fenIndex = isGameWithHuman ? 0 : botMatchGameIndex / 2;
             board.LoadPosition(botMatchStartFens[fenIndex]);
             //board.LoadPosition("rnb1kbnr/pppp1ppp/5q2/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3");
-            //board.LoadPosition("5rk1/6p1/1p5r/pP1p4/P2P4/4R2N/1B4K1/5bQ1 w - - 1 60");
+            //board.LoadPosition("r1bqkbnr/ppppppp1/2n4p/8/8/3P1N2/PPP1PPPP/RNBQKB1R w KQkq - 1 3");
 
             // Player Setup
             PlayerWhite = CreatePlayer(whiteType);
