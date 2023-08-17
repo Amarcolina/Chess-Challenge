@@ -10,9 +10,11 @@ public class MyBot : IChessBot, IComparer<Move> {
     public static int[] PieceValue = new int[] { 0, 1, 3, 3, 5, 9, 100 };
 
     public Dictionary<ulong, (int eval, Move move, int depth, ulong next)> Table = new();
-    public Dictionary<(ulong, Move), int> Memory = new();
+    //public Dictionary<(ulong, Move), int> Memory = new();
     public Dictionary<ulong, string> HashToFen = new();
     //public Dictionary<ulong, string> HashToRep = new();
+
+    public int[] Memory = new int[262144];
 
     public int PositionsSearched = 0;
     public Board Board;
@@ -26,17 +28,19 @@ public class MyBot : IChessBot, IComparer<Move> {
         Timer = timer;
 
         Table.Clear();
-        Memory.Clear();
+        //Memory.Clear();
         PositionsSearched = 0;
 
         (int eval, Move move) result = default;
-        for (int depth = 1; depth <= 6; depth += 1) {
+        for (int depth = 2; depth <= 6; depth += 2) {
             Table.Clear();
 
             //File.Delete("debug.txt");
 
             Console.WriteLine("Eval at depth: " + depth);
             var result2 = EvalRecursive(int.MinValue, int.MaxValue, depth, true);
+
+            
 
             if (timer.MillisecondsElapsedThisTurn > 1000) {
                 //Console.WriteLine("Eval: " + result.eval + " : " + Eval(0) + " : " + PositionsSearched);
@@ -96,10 +100,10 @@ public class MyBot : IChessBot, IComparer<Move> {
     }
 
     public int Compare(Move x, Move y) {
-        Memory.TryGetValue((HashInQuestion, x), out var memoryX);
-        Memory.TryGetValue((HashInQuestion, y), out var memoryY);
-
-        return (memoryY - memoryX) * MultInQuestion;
+        //Memory.TryGetValue((HashInQuestion, x), out var memoryX);
+        //Memory.TryGetValue((HashInQuestion, y), out var memoryY);
+        return (Memory[(HashInQuestion * y.RawValue) & 262143] -
+                Memory[(HashInQuestion * x.RawValue) & 262143]) * MultInQuestion;
     }
 
     //public string BuildCanonicalId(Board board) {
@@ -160,11 +164,9 @@ public class MyBot : IChessBot, IComparer<Move> {
         }
 
         if (moves.Length > 0) {
-            if (depth > 0) {
-                HashInQuestion = hash;
-                MultInQuestion = Board.IsWhiteToMove ? 1 : -1;
-                moves.Sort(this);
-            }
+            HashInQuestion = hash;
+            MultInQuestion = Board.IsWhiteToMove ? 1 : -1;
+            moves.Sort(this);
 
             bestMove = moves[0];
 
@@ -179,9 +181,9 @@ public class MyBot : IChessBot, IComparer<Move> {
             //List<int> evals = new List<int>();
 
             for (int i = 0; i < moves.Length; i++) {
-                //if (Timer.MillisecondsElapsedThisTurn > 1000 && root) {
-                //    break;
-                //}
+                if (Timer.MillisecondsElapsedThisTurn > 1000) {
+                    break;
+                }
 
                 Board.MakeMove(moves[i]);
 
@@ -221,14 +223,15 @@ public class MyBot : IChessBot, IComparer<Move> {
 
                 (var subEval, var subMove) = EvalRecursive(alpha, beta, depth - 1, false);
                 ulong subHash = Board.ZobristKey;
-                Memory[(hash, moves[i])] = subEval;
+                //Memory[(hash, moves[i])] = subEval;
+                Memory[(hash * moves[i].RawValue) & 262143] = subEval;
 
                 //File.AppendAllText("debug.txt", "}" + depth.ToString() + "".PadLeft(5 - depth) + moves[i].ToString() + " : " + subEval.ToString() + "\n");
 
                 //hash ^= hashDelta;
                 Board.UndoMove(moves[i]);
 
-                evals.Add(subEval);
+                //evals.Add(subEval);
 
                 if (i == 0) {
                     eval = subEval;
@@ -250,17 +253,17 @@ public class MyBot : IChessBot, IComparer<Move> {
                     }
                 }
 
-                //if (Board.IsWhiteToMove) {
-                //    alpha = Math.Max(alpha, eval);
-                //    if (beta <= alpha) {
-                //        break;
-                //    }
-                //} else {
-                //    beta = Math.Min(beta, eval);
-                //    if (beta <= alpha) {
-                //        break;
-                //    }
-                //}
+                if (Board.IsWhiteToMove) {
+                    alpha = Math.Max(alpha, eval);
+                    if (beta <= alpha) {
+                        break;
+                    }
+                } else {
+                    beta = Math.Min(beta, eval);
+                    if (beta <= alpha) {
+                        break;
+                    }
+                }
             }
 
             //Console.WriteLine();

@@ -44,11 +44,13 @@ namespace ChessChallenge.Example
                 //Console.WriteLine("Eval at depth: " + depth);
                 var result2 = EvalRecursive(int.MinValue, int.MaxValue, depth, true);
 
+                
+
                 if (timer.MillisecondsElapsedThisTurn > 1000) {
                     return result.move;
                 }
-
                 result = result2;
+
             }
 
             //hash = (long)board.ZobristKey;
