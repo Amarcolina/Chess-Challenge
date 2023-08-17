@@ -69,7 +69,7 @@ namespace ChessChallenge.Example
             //    }
             //}
 
-            //Console.WriteLine("Eval: " + result.eval + " : " + Eval(board, 0) + " : " + PositionsSearched);
+            //Console.WriteLine("Eval: " + result.eval + " : " + Eval(0) + " : " + PositionsSearched);
 
 
             //Console.WriteLine(HashToFen[result.hash]);

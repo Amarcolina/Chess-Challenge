@@ -30,7 +30,7 @@ public class MyBot : IChessBot, IComparer<Move> {
         PositionsSearched = 0;
 
         (int eval, Move move) result = default;
-        for (int depth = 2; depth <= 6; depth += 2) {
+        for (int depth = 1; depth <= 6; depth += 1) {
             Table.Clear();
 
             //File.Delete("debug.txt");
@@ -65,6 +65,8 @@ public class MyBot : IChessBot, IComparer<Move> {
             result = result2;
         }
 
+        Console.WriteLine("Eval: " + result.eval + " : " + Eval(0) + " : " + PositionsSearched);
+
         return result.move;
 
         //hash = (long)board.ZobristKey;
@@ -84,9 +86,6 @@ public class MyBot : IChessBot, IComparer<Move> {
         //        break;
         //    }
         //}
-
-        //Console.WriteLine("Eval: " + result.eval + " : " + Eval(board, 0) + " : " + PositionsSearched);
-
 
         //Console.WriteLine(HashToFen[result.hash]);
 
@@ -161,18 +160,28 @@ public class MyBot : IChessBot, IComparer<Move> {
         }
 
         if (moves.Length > 0) {
-            HashInQuestion = hash;
-            MultInQuestion = Board.IsWhiteToMove ? 1 : -1;
-            moves.Sort(this);
+            if (depth > 0) {
+                HashInQuestion = hash;
+                MultInQuestion = Board.IsWhiteToMove ? 1 : -1;
+                moves.Sort(this);
+            }
 
             bestMove = moves[0];
 
             bool isInCheck = Board.IsInCheck();
 
+            //List<int> evals2 = new List<int>();
+            //for (int i = 0; i < moves.Length; i++) {
+            //    Memory.TryGetValue((HashInQuestion, moves[i]), out var iii);
+            //    evals2.Add(iii);
+            //}
+
+            //List<int> evals = new List<int>();
+
             for (int i = 0; i < moves.Length; i++) {
-                if (Timer.MillisecondsElapsedThisTurn > 1000 && root) {
-                    break;
-                }
+                //if (Timer.MillisecondsElapsedThisTurn > 1000 && root) {
+                //    break;
+                //}
 
                 Board.MakeMove(moves[i]);
 
@@ -219,6 +228,8 @@ public class MyBot : IChessBot, IComparer<Move> {
                 //hash ^= hashDelta;
                 Board.UndoMove(moves[i]);
 
+                evals.Add(subEval);
+
                 if (i == 0) {
                     eval = subEval;
                     bestMove = moves[i];
@@ -239,18 +250,22 @@ public class MyBot : IChessBot, IComparer<Move> {
                     }
                 }
 
-                if (Board.IsWhiteToMove) {
-                    alpha = Math.Max(alpha, eval);
-                    if (beta <= alpha) {
-                        break;
-                    }
-                } else {
-                    beta = Math.Min(beta, eval);
-                    if (beta <= alpha) {
-                        break;
-                    }
-                }
+                //if (Board.IsWhiteToMove) {
+                //    alpha = Math.Max(alpha, eval);
+                //    if (beta <= alpha) {
+                //        break;
+                //    }
+                //} else {
+                //    beta = Math.Min(beta, eval);
+                //    if (beta <= alpha) {
+                //        break;
+                //    }
+                //}
             }
+
+            //Console.WriteLine();
+            //Console.WriteLine(string.Join(", ", evals));
+            //Console.WriteLine(string.Join(", ", evals2));
         }
 
         //if (hash == 8064761405595400716) {
