@@ -1,77 +1,77 @@
-﻿using ChessChallenge.API;
-using System.IO;//DEBUG
+﻿using System;
+using ChessChallenge.API;
 using System.Collections.Generic;
 using static System.Numerics.BitOperations;
 using static ChessChallenge.API.PieceType;
-using System;
+using static System.Math;
 
-public class MyBot : IChessBot, IComparer<Move> {
+public class MyBot : IChessBot
+{
 
     public static int[] PieceValue = new int[] { 0, 1, 3, 3, 5, 9, 100 };
 
     public Dictionary<ulong, (int eval, Move move, int depth, ulong next)> Table = new();
     //public Dictionary<(ulong, Move), int> Memory = new();
-    public Dictionary<ulong, string> HashToFen = new();
+    //public Dictionary<ulong, string> HashToFen = new();
     //public Dictionary<ulong, string> HashToRep = new();
+
+    //System.Random r = new Random();
 
     public int[] Memory = new int[262144];
 
     public int PositionsSearched = 0;
     public Board Board;
+    public int Color => Board.IsWhiteToMove ? 1 : -1;
     public Timer Timer;
 
-    private ulong HashInQuestion;
-    private int MultInQuestion;
-
-    public Move Think(Board board, Timer timer) {
+    public Move Think(Board board, Timer timer)
+    {
         Board = board;
-        Timer = timer;
+        this.Timer = timer;
 
-        Table.Clear();
-        //Memory.Clear();
-        PositionsSearched = 0;
+        //PositionsSearched = 0;
 
-        (int eval, Move move) result = default;
-        for (int depth = 2; depth <= 6; depth += 2) {
+        Move move = default;
+        int maxDepth = timer.MillisecondsRemaining > 10000 ? 4 : 2;
+        for (int depth = 2; depth <= 4; depth += 2)
+        {
             Table.Clear();
-
-            //File.Delete("debug.txt");
-
-            Console.WriteLine("Eval at depth: " + depth);
-            var result2 = EvalRecursive(int.MinValue, int.MaxValue, depth, true);
-
-            
-
-            if (timer.MillisecondsElapsedThisTurn > 1000) {
-                //Console.WriteLine("Eval: " + result.eval + " : " + Eval(0) + " : " + PositionsSearched);
-                //
-                //var hash = board.ZobristKey;
-                //while (true) {
-                //    if (Table.TryGetValue(hash, out var toDo)) {
-                //        if (hash == toDo.next) break;
-                //        hash = toDo.next;
-                //        if (HashToFen.TryGetValue(hash, out var fen)) {
-                //            Console.WriteLine(fen);
-                //            Console.WriteLine(hash);
-                //        } else {
-                //            Console.WriteLine("A");
-                //            break;
-                //        }
-                //    } else {
-                //        Console.WriteLine("B");
-                //        break;
-                //    }
-                //}
-
-                break;
-            }
-
-            result = result2;
+            NegaMax(-1000000, 1000000, depth, true, out move);
         }
 
-        Console.WriteLine("Eval: " + result.eval + " : " + Eval(0) + " : " + PositionsSearched);
+        //logIt = true;
+        Console.WriteLine("Eval: " + Eval(0) + " : " + PositionsSearched);
+        //logIt = false;
 
-        return result.move;
+        //
+        //var hash = board.ZobristKey;
+        //while (true)
+        //{
+        //    if (Table.TryGetValue(hash, out var toDo))
+        //    {
+        //        if (hash == toDo.next) break;
+        //        hash = toDo.next;
+        //        if (HashToFen.TryGetValue(hash, out var fen))
+        //        {
+        //            Console.WriteLine(fen);
+        //            Console.WriteLine(hash);
+        //        }
+        //        else
+        //        {
+        //            Console.WriteLine("A");
+        //            break;
+        //        }
+        //    }
+        //    else
+        //    {
+        //        Console.WriteLine("B");
+        //        break;
+        //    }
+        //}
+
+        //Console.WriteLine("Eval: " + eval + " : " + Eval(0) + " : " + PositionsSearched);
+
+        return move;
 
         //hash = (long)board.ZobristKey;
         //while (true) {
@@ -99,13 +99,6 @@ public class MyBot : IChessBot, IComparer<Move> {
         //return result.move;
     }
 
-    public int Compare(Move x, Move y) {
-        //Memory.TryGetValue((HashInQuestion, x), out var memoryX);
-        //Memory.TryGetValue((HashInQuestion, y), out var memoryY);
-        return (Memory[(HashInQuestion * y.RawValue) & 262143] -
-                Memory[(HashInQuestion * x.RawValue) & 262143]) * MultInQuestion;
-    }
-
     //public string BuildCanonicalId(Board board) {
     //    string id = board.IsWhiteToMove ? "w" : "b";
     //    for (int x = 0; x < 8; x++) {
@@ -122,7 +115,10 @@ public class MyBot : IChessBot, IComparer<Move> {
     //    return id;
     //}
 
-    public (int eval, Move move) EvalRecursive(int alpha, int beta, int depth, bool root) {
+    //public Stack<Move> debugMoves = new Stack<Move>();
+
+    public int NegaMax(int alpha, int beta, int depth, bool root, out Move bestMove)
+    {
         ulong hash = Board.ZobristKey;
 
         //if (HashToRep.TryGetValue(hash, out var rep)) {
@@ -134,68 +130,111 @@ public class MyBot : IChessBot, IComparer<Move> {
         //    HashToRep[hash] = BuildCanonicalId(board);
         //}
 
-        //if (!HashToFen.ContainsKey(hash)) {
+        //if (!HashToFen.ContainsKey(hash))
+        //{
         //    HashToFen[hash] = Board.GetFenString();
         //}
 
-        if (Table.TryGetValue(hash, out var value)) {
+        if (Table.TryGetValue(hash, out var value))
+        {
             //Only use the transposition table if the depth is shallower, else deeper depths
             //are considered less reliable
-            if (value.depth >= depth) {
-                return (value.eval, value.move);
+            if (value.depth >= depth)
+            {
+                bestMove = value.move;
+                return value.eval * Color;
             }
         }
 
         PositionsSearched++;
-        //if ((PositionsSearched % (1024 * 256)) == 0) {
+        //if ((PositionsSearched % (1024 * 256)) == 0)
+        //{
         //    Console.WriteLine(PositionsSearched + " : " + depth);
         //}
 
-        int eval = Eval(depth);
-        bool isWinning = Board.IsWhiteToMove ? (eval > 0) : (eval < 0);
-        Move bestMove = default;
+        int eval = Eval(depth) * Color;
+        bestMove = default;
         ulong chosenHash = 0;
 
         Span<Move> moves = stackalloc Move[128];
         Board.GetLegalMovesNonAlloc(ref moves, depth <= 0 && !Board.IsInCheck());
 
-        if (root && moves.Length == 1) {
-            return (0, moves[0]);
+        if (root && moves.Length == 1)
+        {
+            bestMove = moves[0];
+            return 0;
         }
 
-        if (moves.Length > 0) {
-            HashInQuestion = hash;
-            MultInQuestion = Board.IsWhiteToMove ? 1 : -1;
-            moves.Sort(this);
+        //if (depth <= -12)
+        //{
+        //Console.WriteLine(string.Join(",  ", debugMoves));
+        //}
 
-            bestMove = moves[0];
+        if (moves.Length > 0)
+        {
+            var sortKeys = stackalloc int[128].Slice(0, moves.Length);
+            for (int i = 0; i < moves.Length; i++)
+            {
+                Board.MakeMove(moves[i]);
+                //sortKeys[i] = Memory[Board.ZobristKey & 262143] * Color;
+                //if (sortKeys[i] == 0)
+                //{
+                //    sortKeys[i] = Eval(depth);
+                //}
+                //sortKeys[i] = r.Next();
+
+                if (moves[i].IsCapture)
+                {
+                    sortKeys[i] = PieceValue[(int)moves[i].MovePieceType] - PieceValue[(int)moves[i].MovePieceType];
+                }
+                else
+                {
+                    sortKeys[i] = 100 - (int)moves[i].MovePieceType;
+                }
+
+                Board.UndoMove(moves[i]);
+            }
+
+            sortKeys.Sort(moves);
 
             bool isInCheck = Board.IsInCheck();
 
             //List<int> evals2 = new List<int>();
-            //for (int i = 0; i < moves.Length; i++) {
-            //    Memory.TryGetValue((HashInQuestion, moves[i]), out var iii);
-            //    evals2.Add(iii);
+            //for (int i = 0; i < sortKeys.Length; i++) {
+            //    evals2.Add(sortKeys[i]*-1);
             //}
-
+            //
             //List<int> evals = new List<int>();
+            //List<string> names = new List<string>();
 
-            for (int i = 0; i < moves.Length; i++) {
-                if (Timer.MillisecondsElapsedThisTurn > 1000) {
-                    break;
-                }
+            for (int i = 0; i < moves.Length; i++)
+            {
+                var move = moves[i];
 
-                Board.MakeMove(moves[i]);
-
-                //hash ^= hashDelta;
+                Board.MakeMove(move);
+                //debugMoves.Push(move);
 
                 //File.AppendAllText("debug.txt", "{" + depth.ToString() + "".PadLeft(5 - depth) + moves[i].ToString() + "\n");
 
-                //Never consider a repeated position if we are winning
-                if (Board.IsRepeatedPosition() && isWinning) {
-                    //File.AppendAllText("debug.txt", "repeat\n");
-                    Board.UndoMove(moves[i]);
-                    continue;
+                int subEval;
+
+                if (Board.IsRepeatedPosition() && eval > 0)
+                {
+                    //Never consider a repeated position if we are winning
+                    subEval = 0;
+                }
+                else if (depth <= 0 && move.IsCapture && !isInCheck &&
+                         (PieceValue[(int)move.MovePieceType] > PieceValue[(int)move.CapturePieceType] ||
+                          (PieceValue[(int)move.CapturePieceType] + 150) < -alpha))
+                {
+                    //We want to prune captures past the horizon as aggressively as possible (unless we are in check)
+                    //Ignore captures where a high-value piece captures a lower value piece
+                    //Ignores captures of pieces whoes value is smaller than the amount we are losing by
+                    subEval = eval;
+                }
+                else
+                {
+                    subEval = -NegaMax(-beta, -alpha, depth - 1, false, out _);
                 }
 
                 //string moveText;
@@ -209,90 +248,87 @@ public class MyBot : IChessBot, IComparer<Move> {
                 //}
                 //File.AppendAllText("debug.txt", depth.ToString().PadLeft(3, '|') + "".PadLeft(4 - depth) + moveText + "\n");
 
-                //If we are past the horizon, don't consider moves where higher-value pieces capture low-value pieces
-                //UNLESS the king is in check, in which case we consider all options
-                if (depth <= 0 && moves[i].IsCapture && !isInCheck) {
-                    int srcValue = PieceValue[(int)moves[i].MovePieceType];
-                    int dstValue = PieceValue[(int)moves[i].CapturePieceType];
-                    if (dstValue < srcValue) {
-                        Board.UndoMove(moves[i]);
-                        //File.AppendAllText("debug.txt", "undone\n");
-                        continue;
-                    }
+                //evals.Add(subEval);
+                //names.Add(moves[i].ToString());
+
+                if (subEval > eval || i == 0)
+                {
+                    eval = subEval;
+                    bestMove = move;
+                    chosenHash = Board.ZobristKey;
                 }
 
-                (var subEval, var subMove) = EvalRecursive(alpha, beta, depth - 1, false);
-                ulong subHash = Board.ZobristKey;
-                //Memory[(hash, moves[i])] = subEval;
-                Memory[(hash * moves[i].RawValue) & 262143] = subEval;
+                Board.UndoMove(move);
+                //debugMoves.Pop();
+
+                alpha = Max(alpha, eval);
+                if (alpha >= beta)
+                {
+                    break;
+                }
+
+                //if (Timer.MillisecondsElapsedThisTurn > 1000 && root)
+                //{
+                //    break;
+                //}
+
+                //if (Timer.MillisecondsElapsedThisTurn > 1000 && root)
+                //{
+                //    break;
+                //}
 
                 //File.AppendAllText("debug.txt", "}" + depth.ToString() + "".PadLeft(5 - depth) + moves[i].ToString() + " : " + subEval.ToString() + "\n");
-
-                //hash ^= hashDelta;
-                Board.UndoMove(moves[i]);
-
-                //evals.Add(subEval);
-
-                if (i == 0) {
-                    eval = subEval;
-                    bestMove = moves[i];
-                    chosenHash = subHash;
-                } else {
-                    if (Board.IsWhiteToMove) {
-                        if (subEval > eval) {
-                            eval = subEval;
-                            bestMove = moves[i];
-                            chosenHash = subHash;
-                        }
-                    } else {
-                        if (subEval < eval) {
-                            eval = subEval;
-                            bestMove = moves[i];
-                            chosenHash = subHash;
-                        }
-                    }
-                }
-
-                if (Board.IsWhiteToMove) {
-                    alpha = Math.Max(alpha, eval);
-                    if (beta <= alpha) {
-                        break;
-                    }
-                } else {
-                    beta = Math.Min(beta, eval);
-                    if (beta <= alpha) {
-                        break;
-                    }
-                }
             }
 
-            //Console.WriteLine();
-            //Console.WriteLine(string.Join(", ", evals));
-            //Console.WriteLine(string.Join(", ", evals2));
+            //if (evals2.Count(r => r != 0) > 10)
+            //{
+            //    Console.WriteLine();
+            //    Console.WriteLine((Board.IsWhiteToMove ? "white" : "black") + " :   " + Board.GetFenString());
+            //    Console.WriteLine(string.Join(", ", evals2));
+            //    Console.WriteLine(string.Join(", ", evals));
+            //    Console.WriteLine(string.Join(", ", names));
+            //}
         }
 
-        //if (hash == 8064761405595400716) {
-        //    Console.WriteLine("What");
+        Memory[hash & 262143] = eval * Color;
+        Table[hash] = (eval * Color, bestMove, depth, chosenHash);
+
+        //if (root && bestMove.IsNull)
+        //{
+        //    throw new Exception();
         //}
 
-        Table[hash] = (eval, bestMove, depth, chosenHash);
-        //Memory[hash] = eval;
-        return (eval, bestMove);
+        return eval;
     }
 
-    public int Eval(int depth) {
-        if (Board.IsRepeatedPosition()) {
+    public int Eval(int depth)
+    {
+        if (Board.IsRepeatedPosition() || Board.IsInStalemate())
+        {
             return 0;
         }
 
-        if (Board.IsInCheckmate()) {
+        if (Board.IsInCheckmate())
+        {
             return (100000 + depth) * (Board.IsWhiteToMove ? -1 : 1);
-        } else {
-            return Eval(true) - Eval(false);
+        }
+        else
+        {
+            var result = Eval(true) - Eval(false);
+
+            //var king = Board.GetKingSquare(true);
+            //var enemyKing = Board.GetKingSquare(false);
+            //
+            //result += Sign(result) * (8 - Max(Abs(enemyKing.Rank - king.Rank), Abs(enemyKing.File - king.File))) * 10;
+
+            return result;
         }
     }
 
-    public int Eval(bool isWhite) {
+    bool logIt = false;
+
+    public int Eval(bool isWhite)
+    {
         var piece = isWhite ? Board.WhitePiecesBitboard : Board.BlackPiecesBitboard;
         var pawns = Board.GetPieceBitboard(Pawn, isWhite);
         var bisho = Board.GetPieceBitboard(Bishop, isWhite);
@@ -319,65 +355,68 @@ public class MyBot : IChessBot, IComparer<Move> {
 
         int knightsActive = PopCount(knigh & 0x00003C3C3C3C0000);
 
-        int doubledPawns = Math.Max(0, PopCount(pawns & 0x80) - 1) +
-                           Math.Max(0, PopCount(pawns & 0x40) - 1) +
-                           Math.Max(0, PopCount(pawns & 0x20) - 1) +
-                           Math.Max(0, PopCount(pawns & 0x10) - 1) +
-                           Math.Max(0, PopCount(pawns & 0x08) - 1) +
-                           Math.Max(0, PopCount(pawns & 0x04) - 1) +
-                           Math.Max(0, PopCount(pawns & 0x02) - 1) +
-                           Math.Max(0, PopCount(pawns & 0x01) - 1);
 
-        if ((minorPop + rooksPop) >= 4) {
-            //Bonus to king in corner of board
-            eval += kingSafety;
-            eval += development * 10;
-            eval += kingProtected * 50;
-            eval -= doubledPawns * 40;
-        } else if (minorPop >= 2 && rooksPop > 0 && pawnsPop >= 4) {
-            //Mid game
+        //if (logIt)
+        //{
+        //    BitboardHelper.VisualizeBitboard(totalSliderMovers);
+        //    Console.WriteLine(sliderMoves);
+        //}
+
+        if (minorPop >= 2 && rooksPop > 0 && pawnsPop >= 4)
+        {
+            //Early/Mid game
             eval += kingSafety;
             eval += development * 15;
             eval += kingProtected * 50;
             eval += knightsActive * 20;
-            eval -= doubledPawns * 40;
-        } else {
+        }
+        else
+        {
             //Prefer putting enemy king on edge of board
-            int enemyKingEdgeDist = Math.Min(enemyKing.Rank, 7 - enemyKing.Rank) + Math.Min(enemyKing.File, 7 - enemyKing.File);
+            int enemyKingEdgeDist = Min(enemyKing.Rank, 7 - enemyKing.Rank) + Min(enemyKing.File, 7 - enemyKing.File);
             eval -= enemyKingEdgeDist;
 
             //Prefer having pawns close to queening
-            if (isWhite) {
+            if (isWhite)
+            {
                 eval -= LeadingZeroCount(pawns);
-            } else {
+            }
+            else
+            {
                 eval -= TrailingZeroCount(pawns);
             }
         }
 
-        //Passed pawns
+        ulong pawnAttacks;
+        if (isWhite)
         {
-            //TODO
+            pawnAttacks = ((pawns & 0x7F7F7F7F7F7F7F7F) << 9) | ((pawns & 0xFEFEFEFEFEFEFEFE) << 7);
         }
+        else
+        {
+            pawnAttacks = ((pawns & 0xFEFEFEFEFEFEFEFE) >> 9) | ((pawns & 0x7F7F7F7F7F7F7F7F) >> 7);
+        }
+
+        int sliderMoves = 0;
+        ulong sliders = bisho | rooks | queen;
+        while (sliders != 0)
+        {
+            int sliderI = BitboardHelper.ClearAndGetIndexOfLSB(ref sliders);
+            var square = new Square(sliderI % 8, sliderI / 8);
+            ulong mooo = BitboardHelper.GetSliderAttacks(Board.GetPiece(square).PieceType, square, Board);
+            sliderMoves += PopCount(mooo);
+        }
+
+        eval += sliderMoves * 4;
 
         //Pieces supported by pawns
-        {
-            ulong supported;
-            if (isWhite) {
-                supported = ((pawns & 0x7F7F7F7F7F7F7F7F) << 9) | ((pawns & 0xFEFEFEFEFEFEFEFE) << 7);
-            } else {
-                supported = ((pawns & 0xFEFEFEFEFEFEFEFE) >> 9) | ((pawns & 0x7F7F7F7F7F7F7F7F) >> 7);
-            }
-            supported &= piece;
-            eval += PopCount(supported) * 5;
-        }
+        eval += PopCount(pawnAttacks & piece) * 5;
 
         //Piece counts
-        {
-            eval += pawnsPop * 100 +
-                    minorPop * 300 +
-                    rooksPop * 500 +
-                    PopCount(queen) * 1100;
-        }
+        eval += pawnsPop * 100 +
+                minorPop * 300 +
+                rooksPop * 500 +
+                PopCount(queen) * 1100;
 
         return eval;
     }
