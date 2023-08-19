@@ -47,19 +47,12 @@ public class MyBot : IChessBot {
 
     //File.Delete("debug.txt");
 
-    Move toUse;
-    int bestEval = 0;
-    int eval = 0;
     do {
       //File.AppendAllText("debug.txt", "\n\n\n" + depth + "\n\n\n");
 
       //Console.WriteLine("  Eval at depth " + depth);
 
-      toUse = BestMove;
-      eval = NegaMax(-1000000, 1000000, depth++, true);
-
-      
-      bestEval = eval;
+      NegaMax(-1000000, 1000000, depth++, true);
     } while (MyTimer.MillisecondsElapsedThisTurn < MaxAllowedTime && depth < 16);
 
     //NegaMax(-1000000, 1000000, 2, true);
@@ -67,7 +60,7 @@ public class MyBot : IChessBot {
     //Console.WriteLine("Curr Eval: " + bestEval);
     //Console.WriteLine(PositionsSearched + " : " + SoftHits + " : " + ExactHits);
 
-    return toUse.IsNull ? (BestMove.IsNull ? MyBoard.GetLegalMoves()[0] : BestMove) : toUse;
+    return BestMove.IsNull ? MyBoard.GetLegalMoves()[0] : BestMove;
   }
 
   //public Stack<Move> debugMoves = new Stack<Move>();
