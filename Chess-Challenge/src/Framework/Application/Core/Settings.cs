@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+using System.Numerics;
 
 namespace ChessChallenge.Application
 {
@@ -7,8 +7,8 @@ namespace ChessChallenge.Application
         public const string Version = "1.20";
 
         // Game settings
-        public const int GameDurationMilliseconds = 20 * 1000;
-        public const int IncrementMilliseconds = 0 * 1000;
+        public const int GameDurationMilliseconds = 4 * 1000;
+        public const int IncrementMilliseconds = 20;
         public const float MinMoveDelay = 0;
         public static readonly bool RunBotsOnSeparateThread = true;
 

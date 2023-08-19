@@ -1,4 +1,4 @@
-﻿using ChessChallenge.Chess;
+using ChessChallenge.Chess;
 using ChessChallenge.Example;
 using Raylib_cs;
 using System;
@@ -97,7 +97,7 @@ namespace ChessChallenge.Application
             int fenIndex = isGameWithHuman ? 0 : botMatchGameIndex / 2;
             board.LoadPosition(botMatchStartFens[fenIndex]);
             //board.LoadPosition("rnb1kbnr/pppp1ppp/5q2/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3");
-            //board.LoadPosition("r1bqkb1r/pppppppp/5n2/4B3/4P3/1P1P2P1/P1P2PBP/RN1QK2R w KQk - 1 10");
+            //board.LoadPosition("q7/2k1p3/pp1pPr2/n1p2P1r/2P2B1p/2PQ3P/P5R1/5RK1 b - - 5 45");
 
             // Player Setup
             PlayerWhite = CreatePlayer(whiteType);
