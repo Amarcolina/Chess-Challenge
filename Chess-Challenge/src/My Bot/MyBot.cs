@@ -16,7 +16,7 @@ public class MyBot : IChessBot {
 
       int bestFound = depth;
 
-      if (board.IsInStalemate() || board.IsRepeatedPosition()) return 0;
+      //if (board.IsInStalemate() || board.IsRepeatedPosition()) return 0;
       //if (board.IsInCheckmate()) return bestFound;
 
       var moves = board.GetLegalMoves();
@@ -28,7 +28,8 @@ public class MyBot : IChessBot {
 
       foreach (var move in moves.OrderByDescending(t => t.IsCapture)) {
         board.MakeMove(move);
-        int subEval = -NegaMax(-beta, -alpha, depth - 1);
+        //int subEval = -NegaMax(-beta, -alpha, depth - 1);
+        int subEval = board.IsRepeatedPosition() ? 0 : -NegaMax(-beta, -alpha, depth - 1);
         board.UndoMove(move);
 
         if (subEval < bestFound) {

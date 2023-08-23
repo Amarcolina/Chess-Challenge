@@ -7,51 +7,60 @@ namespace ChessChallenge.Example {
   // Plays randomly otherwise.
   public class EvilBot : IChessBot {
 
-    Move BestMove;
+    //                     .  P    K    B    R    Q    K
+    int[] kPieceValues = { 0, 100, 300, 310, 500, 900, 10000 };
+    int kMassiveNum = 99999999;
+
+    int mDepth;
+    Move mBestMove;
 
     public Move Think(Board board, Timer timer) {
-      int maxDepth = 4;
+      Move[] legalMoves = board.GetLegalMoves();
+      mDepth = 3;
 
-      int NegaMax(int alpha, int beta, int depth) {
-        //if (depth == 0) {
-        //  Console.WriteLine(maxDepth);
-        //}
+      EvaluateBoardNegaMax(board, mDepth, -kMassiveNum, kMassiveNum, board.IsWhiteToMove ? 1 : -1);
 
-        int bestFound = 100000000;
+      return mBestMove;
+    }
 
-        if (board.IsInStalemate() || board.IsRepeatedPosition()) return 0;
-        //if (board.IsInCheckmate()) return bestFound;
+    int EvaluateBoardNegaMax(Board board, int depth, int alpha, int beta, int color) {
+      Move[] legalMoves;
 
-        var moves = board.GetLegalMoves();
-        if (depth == maxDepth)
-          return board.GetAllPieceLists().
-                       SelectMany(p => p).
-                       Sum(p => (p.IsWhite == board.IsWhiteToMove ? -100 : 100) * (int)p.PieceType) -
-                       moves.Length;
+      if (board.IsDraw())
+        return 0;
 
-        foreach (var move in moves.OrderByDescending(t => t.IsCapture)) {
-          board.MakeMove(move);
-          int subEval = -NegaMax(-beta, -alpha, depth + 1);
-          board.UndoMove(move);
+      if (depth == 0 || (legalMoves = board.GetLegalMoves()).Length == 0) {
+        // EVALUATE
+        int sum = 0;
 
-          if (subEval < bestFound) {
-            bestFound = subEval;
-            if (depth == 0)
-              BestMove = move;
+        if (board.IsInCheckmate())
+          return -9999999;
 
-            alpha = Math.Min(alpha, bestFound);
-            if (alpha <= beta)
-              break;
-          }
-        }
+        for (int i = 0; ++i < 7;)
+          sum += (board.GetPieceList((PieceType)i, true).Count - board.GetPieceList((PieceType)i, false).Count) * kPieceValues[i];
+        // EVALUATE
 
-        return bestFound;
+        return color * sum;
       }
 
-      for (; timer.MillisecondsElapsedThisTurn < timer.MillisecondsRemaining / 1600f; maxDepth += 2)
-        NegaMax(1000000000, -1000000000, 0);
+      // TREE SEARCH
+      int recordEval = int.MinValue;
+      foreach (Move move in legalMoves) {
+        board.MakeMove(move);
+        int evaluation = -EvaluateBoardNegaMax(board, depth - 1, -beta, -alpha, -color);
+        board.UndoMove(move);
 
-      return BestMove;
+        if (recordEval < evaluation) {
+          recordEval = evaluation;
+          if (depth == mDepth)
+            mBestMove = move;
+        }
+        alpha = Math.Max(alpha, recordEval);
+        if (alpha >= beta) break;
+      }
+      // TREE SEARCH
+
+      return recordEval;
     }
 
   }
