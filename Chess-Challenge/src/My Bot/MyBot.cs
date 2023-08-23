@@ -1,272 +1,54 @@
 using System;
-using System.IO;
 using System.Linq;
 using ChessChallenge.API;
-using System.Collections.Generic;
-using static System.Numerics.BitOperations;
-using static ChessChallenge.API.PieceType;
-using static System.Math;
 
 public class MyBot : IChessBot {
 
-  public static int[] PieceValue = new int[] { 0, 1, 3, 3, 5, 9, 100 };
-
-  //System.Random r = new Random();
-
-  public int[] Memory = new int[262144];
-
-  Transposition[] TranspositionTable = new Transposition[262144];
-  //Move[] KillerMoves = new Move[262144];
-
-  
-  Board MyBoard;
-  int Color => MyBoard.IsWhiteToMove ? 1 : -1;
-
   Move BestMove;
 
-  Timer MyTimer;
-  int MaxAllowedTime;
-
-  //public int PositionsSearched = 0;
-  //int ExactHits;
-  //int SoftHits;
-
-  record struct Transposition(ulong Hash, int Eval, Move Killer, int Depth, int Flag);
-
   public Move Think(Board board, Timer timer) {
-    MyBoard = board;
-    MyTimer = timer;
+    int maxDepth = 4;
 
-    BestMove = default;
-    int depth = 1;
-    MaxAllowedTime = MyTimer.MillisecondsRemaining / 45;
-
-    //ExactHits = 0;
-    //PositionsSearched = 0;
-    //SoftHits = 0;
-
-    //File.Delete("debug.txt");
-
-    do {
-      //File.AppendAllText("debug.txt", "\n\n\n" + depth + "\n\n\n");
-
-      //Console.WriteLine("  Eval at depth " + depth);
-
-      NegaMax(-1000000, 1000000, depth++, true);
-    } while (MyTimer.MillisecondsElapsedThisTurn < MaxAllowedTime && depth < 16);
-
-    //NegaMax(-1000000, 1000000, 2, true);
-
-    //Console.WriteLine("Curr Eval: " + bestEval);
-    //Console.WriteLine(PositionsSearched + " : " + SoftHits + " : " + ExactHits);
-
-    return BestMove.IsNull ? MyBoard.GetLegalMoves()[0] : BestMove;
-  }
-
-  //public Stack<Move> debugMoves = new Stack<Move>();
-
-  public int NegaMax(int alpha, int beta, int depth, bool root) {
-    ulong hash = MyBoard.ZobristKey;
-    ulong hashIndex = hash & 262143;
-    var alphaBeforeSearch = alpha;
-
-    //Only use the transposition table if the depth is shallower, else deeper depths
-    //are considered less reliable
-    var ttEntry = TranspositionTable[hashIndex];
-    if (ttEntry.Hash == hash && ttEntry.Depth >= depth && (
-        ttEntry.Flag == 1 ||
-        (ttEntry.Flag == 0 && ttEntry.Eval <= alpha) ||
-        (ttEntry.Flag == 2 && ttEntry.Eval >= beta))) {
-      //ExactHits++;
-      return ttEntry.Eval;
-    }
-
-    //if (ttEntry.Hash == hash) SoftHits++;
-
-    //PositionsSearched++;
-    //if ((PositionsSearched % (1024 * 256)) == 0) {
-    //    Console.WriteLine(PositionsSearched + " : " + depth);
-    //}
-
-    int bestFound = -987654321;
-
-    int staticEval = Eval(depth) * Color;
-
-    Span<Move> moves = stackalloc Move[128];
-    MyBoard.GetLegalMovesNonAlloc(ref moves, depth <= 0 && !MyBoard.IsInCheck());
-
-    if (root && moves.Length == 1) {
-      BestMove = moves[0];
-      return 0;
-    }
-
-    if (depth <= 0) {
-      bestFound = staticEval;
-      if (bestFound >= beta) return bestFound;
-      alpha = Max(alpha, bestFound);
-    }
-
-    Move bestMove = default;
-
-    if (moves.Length > 0) {
-      var sortKeys = stackalloc int[128].Slice(0, moves.Length);
-      for (int i = 0; i < moves.Length; i++) {
-        var move = moves[i];
-        if (move == ttEntry.Killer || move == BestMove) {
-          sortKeys[i] = int.MinValue;
-        } else if (move.IsCapture) {
-          sortKeys[i] = (int)move.MovePieceType - 100 * (int)move.CapturePieceType;
-        } else {
-          //MyBoard.MakeMove(move);
-          //sortKeys[i] = Memory[MyBoard.ZobristKey & 262143] * Color;
-          //MyBoard.UndoMove(move);
-          sortKeys[i] = 10000 - (int)move.MovePieceType;
-        }
+    int NegaMax(int alpha, int beta, int depth) {
+      if (depth == 0) {
+        Console.WriteLine(maxDepth);
       }
 
-      sortKeys.Sort(moves);
+      int bestFound = 100000000;
 
-      bool isInCheck = MyBoard.IsInCheck();
+      if (board.IsRepeatedPosition() || board.IsInStalemate()) return 0;
+      if (board.IsInCheckmate()) return bestFound - board.PlyCount;
 
-      for (int i = 0; i < moves.Length; i++) {
-        var move = moves[i];
+      var moves = board.GetLegalMoves().OrderByDescending(t => t.IsCapture);//.ThenByDescending(t => t.MovePieceType);
+      if (depth == maxDepth)
+        return board.GetAllPieceLists().
+                     SelectMany(p => p).
+                     Sum(p => (p.IsWhite == board.IsWhiteToMove ? -1 : 1) * (int)p.PieceType * 100) -
+                     moves.Count();
 
-        MyBoard.MakeMove(move);
-        //debugMoves.Push(move);
+      foreach (var move in moves.Take(25)) {
+        board.MakeMove(move);
+        int subEval = -NegaMax(-beta, -alpha, depth + 1);
+        board.UndoMove(move);
 
-        //File.AppendAllText("debug.txt", "{" + depth.ToString() + "".PadLeft(5 - depth) + moves[i].ToString() + "\n");
-
-        int subEval;
-
-        if (MyBoard.IsRepeatedPosition() && staticEval > 0) {
-          //Never consider a repeated position if we are winning
-          subEval = 0;
-        } else {
-          subEval = -NegaMax(-beta, -alpha, depth - (i > 3 ? 2 : 1), false);
-        }
-
-        //File.AppendAllText("debug.txt", string.Join(" - ", debugMoves.Reverse().Select(f => f.ToString().Replace("Move: ", "").Replace("'", ""))) + " : " + subEval + "\n");
-
-        MyBoard.UndoMove(move);
-        //debugMoves.Pop();
-
-        //File.AppendAllText("debug.txt", "}" + depth.ToString() + "".PadLeft(5 - depth) + moves[i].ToString() + " : " + subEval.ToString() + "\n");
-
-        if (subEval > bestFound) {
+        if (subEval < bestFound) {
           bestFound = subEval;
-          bestMove = move;
-          if (root) {
+          if (depth == 0)
             BestMove = move;
-          }
 
-          alpha = Max(alpha, bestFound);
-          if (alpha >= beta) {
+          alpha = Math.Min(alpha, bestFound);
+          if (alpha <= beta)
             break;
-          }
         }
-
-        if (MyTimer.MillisecondsElapsedThisTurn > MaxAllowedTime) return 6661666;
       }
-    } else {
-      bestFound = staticEval;
+
+      return bestFound;
     }
 
-    Memory[hash & 262143] = staticEval * Color;
+    for (; timer.MillisecondsElapsedThisTurn < timer.MillisecondsRemaining / 1600; maxDepth += 2)
+      NegaMax(1000000000, -1000000000, 0);
+    //Console.WriteLine(eval);
 
-    TranspositionTable[hashIndex] = new Transposition(hash, bestFound, bestMove, depth, bestFound >= beta ? 2 : bestFound > alphaBeforeSearch ? 1 : 0);
-
-    return bestFound;
-  }
-
-  public int Eval(int depth) {
-    if (MyBoard.IsRepeatedPosition() || MyBoard.IsInStalemate()) {
-      return 0;
-    }
-
-    if (MyBoard.IsInCheckmate()) {
-      return (100000 + depth) * (MyBoard.IsWhiteToMove ? -1 : 1);
-    } else {
-      var result = Eval(true) - Eval(false);
-
-      //var king = Board.GetKingSquare(true);
-      //var enemyKing = Board.GetKingSquare(false);
-      //
-      //result += Sign(result) * (8 - Max(Abs(enemyKing.Rank - king.Rank), Abs(enemyKing.File - king.File))) * 10;
-
-      return result;
-    }
-  }
-
-  public int Eval(bool isWhite) {
-    var piece = isWhite ? MyBoard.WhitePiecesBitboard : MyBoard.BlackPiecesBitboard;
-    var pawns = MyBoard.GetPieceBitboard(Pawn, isWhite);
-    var bisho = MyBoard.GetPieceBitboard(Bishop, isWhite);
-    var knigh = MyBoard.GetPieceBitboard(Knight, isWhite);
-    var rooks = MyBoard.GetPieceBitboard(Rook, isWhite);
-    var queen = MyBoard.GetPieceBitboard(Queen, isWhite);
-    var kings = MyBoard.GetPieceBitboard(King, isWhite);
-
-    var king = MyBoard.GetKingSquare(isWhite);
-    var enemyKing = MyBoard.GetKingSquare(!isWhite);
-
-    int eval = 0;
-
-    int pawnsPop = PopCount(piece);
-    int minorPop = PopCount(bisho | knigh);
-    int rooksPop = PopCount(rooks);
-
-    int kingSafety = (king.File <= 2 || king.File >= 6) ? 50 : 0 +
-                     king.Rank == (isWhite ? 0 : 7) ? 0 : -120;
-
-    int development = PopCount((bisho | knigh) & 0x007E7E7E7E7E7E00);
-
-    int kingProtected = ((kings >> 8 | kings << 8) & piece) != 0 ? 1 : 0;
-
-    int knightsActive = PopCount(knigh & 0x00003C3C3C3C0000);
-
-    if (minorPop >= 2 && rooksPop > 0 && pawnsPop >= 4) {
-      //Early/Mid game
-      eval += kingSafety;
-      eval += development * 6;
-      eval += kingProtected * 20;
-      eval += knightsActive * 10;
-    } else {
-      //Prefer putting enemy king on edge of board
-      int enemyKingEdgeDist = Min(enemyKing.Rank, 7 - enemyKing.Rank) + Min(enemyKing.File, 7 - enemyKing.File);
-      eval -= enemyKingEdgeDist;
-
-      //Prefer having pawns close to queening
-      int leading = 64 - (isWhite ? LeadingZeroCount(pawns) : TrailingZeroCount(pawns));
-      eval += leading;
-    }
-
-    ulong pawnAttacks;
-    if (isWhite) {
-      pawnAttacks = ((pawns & 0x7F7F7F7F7F7F7F7F) << 9) | ((pawns & 0xFEFEFEFEFEFEFEFE) << 7);
-    } else {
-      pawnAttacks = ((pawns & 0xFEFEFEFEFEFEFEFE) >> 9) | ((pawns & 0x7F7F7F7F7F7F7F7F) >> 7);
-    }
-
-    int sliderMoves = 0;
-    ulong sliders = bisho | rooks | queen;
-    while (sliders != 0) {
-      int sliderI = BitboardHelper.ClearAndGetIndexOfLSB(ref sliders);
-      var square = new Square(sliderI % 8, sliderI / 8);
-      ulong mooo = BitboardHelper.GetSliderAttacks(MyBoard.GetPiece(square).PieceType, square, MyBoard);
-      sliderMoves += PopCount(mooo);
-    }
-    
-    eval += sliderMoves;
-
-    eval += PopCount(pawnAttacks & piece);
-
-
-    //Piece counts
-    eval += pawnsPop * 100 +
-            minorPop * 300 +
-            rooksPop * 500 +
-            PopCount(queen) * 1100;
-
-    return eval;
+    return BestMove;
   }
 }
