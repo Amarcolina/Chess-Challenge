@@ -16,17 +16,17 @@ public class MyBot : IChessBot {
 
       int bestFound = 100000000;
 
-      if (board.IsInStalemate()) return 0;
-      if (board.IsInCheckmate()) return bestFound;
+      if (board.IsInStalemate() || board.IsRepeatedPosition()) return 0;
+      //if (board.IsInCheckmate()) return bestFound;
 
-      var moves = board.GetLegalMoves().OrderByDescending(t => t.IsCapture);
+      var moves = board.GetLegalMoves();
       if (depth == maxDepth)
         return board.GetAllPieceLists().
                      SelectMany(p => p).
-                     Sum(p => (p.IsWhite == board.IsWhiteToMove ? -1 : 1) * (int)p.PieceType * 100) -
-                     moves.Count();
+                     Sum(p => (p.IsWhite == board.IsWhiteToMove ? -100 : 100) * (int)p.PieceType) -
+                     moves.Length;
 
-      foreach (var move in moves) {
+      foreach (var move in moves.OrderByDescending(t => t.IsCapture)) {
         board.MakeMove(move);
         int subEval = -NegaMax(-beta, -alpha, depth + 1);
         board.UndoMove(move);
@@ -45,7 +45,7 @@ public class MyBot : IChessBot {
       return bestFound;
     }
 
-    for (; timer.MillisecondsElapsedThisTurn < timer.MillisecondsRemaining / 1600; maxDepth += 2)
+    for (; timer.MillisecondsElapsedThisTurn < timer.MillisecondsRemaining / 1600f; maxDepth += 2)
       NegaMax(1000000000, -1000000000, 0);
 
     return BestMove;
