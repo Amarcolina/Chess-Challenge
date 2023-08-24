@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 
@@ -7,8 +7,8 @@ namespace ChessChallenge.Chess
     // Helper class for dealing with FEN strings
     public static class FenUtility
     {
-        //public const string StartPositionFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-        public const string StartPositionFEN = "r1b2bnr/pp1nkppp/2p1p3/8/3P1B2/2P2N2/PP1NBPPP/R3K2R w KQ - 5 10";
+        public const string StartPositionFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        //public const string StartPositionFEN = "r1b2bnr/pp1nkppp/2p1p3/8/3P1B2/2P2N2/PP1NBPPP/R3K2R w KQ - 5 10";
         
 
         // Load position from fen string

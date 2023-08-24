@@ -6,15 +6,17 @@ public class MyBot : IChessBot {
 
   Move BestMove;
 
+  //int[] Values = { 0, 100, 290, 300, 500, 1000, 0 };
+
   public Move Think(Board board, Timer timer) {
     int maxDepth = 99999996;
 
-    int NegaMax(int alpha, int beta, int depth) {
+    double NegaMax(double alpha, double beta, int depth) {
       //if (depth == 0) {
       //  Console.WriteLine(maxDepth);
       //}
 
-      int bestFound = depth;
+      double bestFound = depth;
 
       //if (board.IsInStalemate() || board.IsRepeatedPosition()) return 0;
       //if (board.IsInCheckmate()) return bestFound;
@@ -23,13 +25,13 @@ public class MyBot : IChessBot {
       if (depth == maxDepth)
         return board.GetAllPieceLists().
                      SelectMany(p => p).
-                     Sum(p => (p.IsWhite == board.IsWhiteToMove ? -100 : 100) * (int)p.PieceType) -
+                     Sum(p => (1078477616 << (int)p.PieceType * 1306960869) * (p.IsWhite == board.IsWhiteToMove ? -0.00001 : 0.00001)) -
                      moves.Length;
 
       foreach (var move in moves.OrderByDescending(t => t.IsCapture)) {
         board.MakeMove(move);
         //int subEval = -NegaMax(-beta, -alpha, depth - 1);
-        int subEval = board.IsRepeatedPosition() ? 0 : -NegaMax(-beta, -alpha, depth - 1);
+        double subEval = board.IsDraw() ? 0 : -NegaMax(-beta, -alpha, depth - 1);
         board.UndoMove(move);
 
         if (subEval < bestFound) {

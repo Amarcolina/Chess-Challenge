@@ -7,61 +7,52 @@ namespace ChessChallenge.Example {
   // Plays randomly otherwise.
   public class EvilBot : IChessBot {
 
-    //                     .  P    K    B    R    Q    K
-    int[] kPieceValues = { 0, 100, 300, 310, 500, 900, 10000 };
-    int kMassiveNum = 99999999;
-
-    int mDepth;
-    Move mBestMove;
+    Move BestMove;
 
     public Move Think(Board board, Timer timer) {
-      Move[] legalMoves = board.GetLegalMoves();
-      mDepth = 3;
+      int maxDepth = 99999996;
 
-      EvaluateBoardNegaMax(board, mDepth, -kMassiveNum, kMassiveNum, board.IsWhiteToMove ? 1 : -1);
+      double NegaMax(double alpha, double beta, int depth) {
+        //if (depth == 0) {
+        //  Console.WriteLine(maxDepth);
+        //}
 
-      return mBestMove;
-    }
+        double bestFound = depth;
 
-    int EvaluateBoardNegaMax(Board board, int depth, int alpha, int beta, int color) {
-      Move[] legalMoves;
+        //if (board.IsInStalemate() || board.IsRepeatedPosition()) return 0;
+        //if (board.IsInCheckmate()) return bestFound;
 
-      if (board.IsDraw())
-        return 0;
+        var moves = board.GetLegalMoves();
+        if (depth == maxDepth)
+          return board.GetAllPieceLists().
+                       SelectMany(p => p).
+                       Sum(p => (p.IsWhite == board.IsWhiteToMove ? -100 : 100) * Math.Pow((int)p.PieceType, 2)) -
+                       moves.Length;
 
-      if (depth == 0 || (legalMoves = board.GetLegalMoves()).Length == 0) {
-        // EVALUATE
-        int sum = 0;
+        foreach (var move in moves.OrderByDescending(t => t.IsCapture)) {
+          board.MakeMove(move);
+          //int subEval = -NegaMax(-beta, -alpha, depth - 1);
+          double subEval = board.IsDraw() ? 0 : -NegaMax(-beta, -alpha, depth - 1);
+          board.UndoMove(move);
 
-        if (board.IsInCheckmate())
-          return -9999999;
+          if (subEval < bestFound) {
+            bestFound = subEval;
+            if (depth == 100000000)
+              BestMove = move;
 
-        for (int i = 0; ++i < 7;)
-          sum += (board.GetPieceList((PieceType)i, true).Count - board.GetPieceList((PieceType)i, false).Count) * kPieceValues[i];
-        // EVALUATE
-
-        return color * sum;
-      }
-
-      // TREE SEARCH
-      int recordEval = int.MinValue;
-      foreach (Move move in legalMoves) {
-        board.MakeMove(move);
-        int evaluation = -EvaluateBoardNegaMax(board, depth - 1, -beta, -alpha, -color);
-        board.UndoMove(move);
-
-        if (recordEval < evaluation) {
-          recordEval = evaluation;
-          if (depth == mDepth)
-            mBestMove = move;
+            alpha = Math.Min(alpha, bestFound);
+            if (alpha <= beta)
+              break;
+          }
         }
-        alpha = Math.Max(alpha, recordEval);
-        if (alpha >= beta) break;
+
+        return bestFound;
       }
-      // TREE SEARCH
 
-      return recordEval;
+      for (; timer.MillisecondsElapsedThisTurn < timer.MillisecondsRemaining / 1600f; maxDepth -= 2)
+        NegaMax(1000000000, -1000000000, 100000000);
+
+      return BestMove;
     }
-
   }
 }
