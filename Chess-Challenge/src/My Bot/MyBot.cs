@@ -21,7 +21,7 @@ public class MyBot : IChessBot {
         long subEval = board.IsDraw() ?
                          0 :
                         -NegaMax(-beta, -alpha, depth - 1,
-                        -eval + (move.IsCastles ? 10000 : move.IsPromotion ? 1610612736 : move.IsCapture ? 1078477616 << (int)move.CapturePieceType * 1306960869 : 0));
+                        -eval + moves.Length + (move.IsCastles ? 10000 : move.IsPromotion ? 1610612736 : move.IsCapture ? 1078477616 << (int)move.CapturePieceType * 1306960869 : 0));
         board.UndoMove(move);
 
         if (subEval < bestFound) {
@@ -38,7 +38,7 @@ public class MyBot : IChessBot {
       return bestFound;
     }
 
-    for (; timer.MillisecondsElapsedThisTurn < timer.MillisecondsRemaining / 500f; maxDepth -= 2)
+    for (; timer.MillisecondsElapsedThisTurn < timer.MillisecondsRemaining / 1000f; maxDepth -= 2)
       NegaMax(30000000000, -30000000000, 20000000000, 0);
 
     return BestMove;

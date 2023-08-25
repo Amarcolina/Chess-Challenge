@@ -3,48 +3,15 @@ using System.Linq;
 using ChessChallenge.API;
 
 namespace ChessChallenge.Example {
-  // A simple bot that can spot mate in one, and always captures the most valuable piece it can.
-  // Plays randomly otherwise.
+
   public class EvilBot : IChessBot {
 
-    Move BestMove;
-
     public Move Think(Board board, Timer timer) {
-      long maxDepth = 19999999996;
-
-      long NegaMax(long alpha, long beta, long depth, long eval) {
-        long bestFound = depth;
-
-        var moves = board.GetLegalMoves();
-        if (depth == maxDepth)
-          return eval - moves.Length;
-
-        foreach (var move in moves.OrderByDescending(t => t.CapturePieceType)) {
-          board.MakeMove(move);
-          long subEval = board.IsDraw() ?
-                           0 :
-                          -NegaMax(-beta, -alpha, depth - 1,
-                          -eval + (move.IsCastles ? 10000 : move.IsPromotion ? 1610612736 : move.IsCapture ? 1078477616 << (int)move.CapturePieceType * 1306960869 : 0));
-          board.UndoMove(move);
-
-          if (subEval < bestFound) {
-            bestFound = subEval;
-            if (depth == 20000000000)
-              BestMove = move;
-
-            alpha = Math.Min(alpha, bestFound);
-            if (alpha <= beta)
-              break;
-          }
-        }
-
-        return bestFound;
+      if (timer.MillisecondsElapsedThisTurn < timer.MillisecondsRemaining / 10000f) {
+        return board.GetLegalMoves()[0];
+      } else {
+        return default;
       }
-
-      for (; timer.MillisecondsElapsedThisTurn < timer.MillisecondsRemaining / 500f; maxDepth -= 2)
-        NegaMax(30000000000, -30000000000, 20000000000, 0);
-
-      return BestMove;
     }
   }
 }
