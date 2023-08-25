@@ -38,7 +38,7 @@ public class MyBot : IChessBot {
       return bestFound;
     }
 
-    for (; timer.MillisecondsElapsedThisTurn < timer.MillisecondsRemaining / 1600f; maxDepth -= 2)
+    for (; timer.MillisecondsElapsedThisTurn < timer.MillisecondsRemaining / 1000f; maxDepth -= 2)
       NegaMax(30000000000, -30000000000, 20000000000, 0);
 
     return BestMove;

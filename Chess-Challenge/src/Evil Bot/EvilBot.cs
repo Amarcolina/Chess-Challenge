@@ -5,11 +5,10 @@ using ChessChallenge.API;
 namespace ChessChallenge.Example {
 
   public class EvilBot : IChessBot {
-
     Move BestMove;
 
     public Move Think(Board board, Timer timer) {
-      long maxDepth = 19999999996;
+      long maxDepth = 19999999998;
 
       long NegaMax(long alpha, long beta, long depth, long eval) {
         long bestFound = depth;
