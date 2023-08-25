@@ -12,27 +12,19 @@ namespace ChessChallenge.Example {
     public Move Think(Board board, Timer timer) {
       long maxDepth = 19999999996;
 
-      //for(var k=PieceType.Pawn; k<=PieceType.Queen; k++) {
-      //  Console.WriteLine((1078477616 << (int)k * 1306960869));
-      //}
-
       long NegaMax(long alpha, long beta, long depth, long eval) {
         long bestFound = depth;
-
-        //if (depth == 20000000000) {
-        //  Console.WriteLine(19999999996 - maxDepth);
-        //}
 
         var moves = board.GetLegalMoves();
         if (depth == maxDepth)
           return eval - moves.Length;
 
-        foreach (var move in moves.OrderByDescending(t => t.IsCapture)) {
+        foreach (var move in moves.OrderByDescending(t => t.CapturePieceType)) {
           board.MakeMove(move);
           long subEval = board.IsDraw() ?
                            0 :
                           -NegaMax(-beta, -alpha, depth - 1,
-                          -eval + (move.IsPromotion ? 900 : move.IsCapture ? 1078477616 << (int)move.CapturePieceType * 1306960869 : 0));
+                          -eval + (move.IsCastles ? 10000 : move.IsPromotion ? 1610612736 : move.IsCapture ? 1078477616 << (int)move.CapturePieceType * 1306960869 : 0));
           board.UndoMove(move);
 
           if (subEval < bestFound) {

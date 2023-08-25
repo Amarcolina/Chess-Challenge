@@ -16,12 +16,12 @@ public class MyBot : IChessBot {
       if (depth == maxDepth)
         return eval - moves.Length;
 
-      foreach (var move in moves.OrderBy(t => t.IsCapture)) {
+      foreach (var move in moves.OrderByDescending(t => t.CapturePieceType)) {
         board.MakeMove(move);
         long subEval = board.IsDraw() ?
                          0 :
                         -NegaMax(-beta, -alpha, depth - 1,
-                        -eval + (move.IsPromotion ? 900 : move.IsCapture ? 1078477616 << (int)move.CapturePieceType * 1306960869 : 0));
+                        -eval + (move.IsCastles ? 10000 : move.IsPromotion ? 1610612736 : move.IsCapture ? 1078477616 << (int)move.CapturePieceType * 1306960869 : 0));
         board.UndoMove(move);
 
         if (subEval < bestFound) {
