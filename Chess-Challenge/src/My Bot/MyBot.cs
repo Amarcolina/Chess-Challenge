@@ -7,7 +7,7 @@ public class MyBot : IChessBot {
   Move BestMove;
 
   public Move Think(Board board, Timer timer) {
-    long maxDepth = 19999999996;
+    long maxDepth = 19999999998;
 
     long NegaMax(long alpha, long beta, long depth, long eval) {
       long bestFound = depth;
@@ -38,7 +38,7 @@ public class MyBot : IChessBot {
       return bestFound;
     }
 
-    for (; timer.MillisecondsElapsedThisTurn < timer.MillisecondsRemaining / 1000f; maxDepth -= 2)
+    for (; timer.MillisecondsElapsedThisTurn < timer.MillisecondsRemaining / 1600f; maxDepth -= 2)
       NegaMax(30000000000, -30000000000, 20000000000, 0);
 
     return BestMove;
