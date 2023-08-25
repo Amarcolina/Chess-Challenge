@@ -9,20 +9,16 @@ public class MyBot : IChessBot {
   public Move Think(Board board, Timer timer) {
     long maxDepth = 19999999996;
 
-    //for(var k=PieceType.Pawn; k<=PieceType.Queen; k++) {
-    //  Console.WriteLine((1078477616 << (int)k * 1306960869));
-    //}
-
-    double NegaMax(double alpha, double beta, long depth, double eval) {
-      double bestFound = depth;
+    long NegaMax(long alpha, long beta, long depth, long eval) {
+      long bestFound = depth;
 
       var moves = board.GetLegalMoves();
       if (depth == maxDepth)
         return eval - moves.Length;
 
-      foreach (var move in moves.OrderByDescending(t => t.IsCapture)) {
+      foreach (var move in moves.OrderBy(t => t.IsCapture)) {
         board.MakeMove(move);
-        double subEval = board.IsDraw() ?
+        long subEval = board.IsDraw() ?
                          0 :
                         -NegaMax(-beta, -alpha, depth - 1,
                         -eval + (move.IsPromotion ? 900 : move.IsCapture ? 1078477616 << (int)move.CapturePieceType * 1306960869 : 0));
@@ -42,9 +38,8 @@ public class MyBot : IChessBot {
       return bestFound;
     }
 
-    //for(int i=0; i<3; i++)
-    for (; timer.MillisecondsElapsedThisTurn < timer.MillisecondsRemaining / 1000f; maxDepth -= 2)
-      NegaMax(3000000000, -3000000000, 20000000000, 0);
+    for (; timer.MillisecondsElapsedThisTurn < timer.MillisecondsRemaining / 500f; maxDepth -= 2)
+      NegaMax(30000000000, -30000000000, 20000000000, 0);
 
     return BestMove;
   }

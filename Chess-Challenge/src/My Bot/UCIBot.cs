@@ -26,13 +26,15 @@ namespace ChessChallenge {
         if (args[1] == "startpos") {
           board.LoadStartPosition();
         } else {
-          board.LoadPosition(String.Join(" ", args.AsSpan(1, args.Length - 1).ToArray()));
+          //System.IO.File.AppendAllText("C:\\Users\\amarcolina\\Documents\\GitHub\\huh.txt", "loading fen...");
+          board.LoadPosition(String.Join(" ", args.AsSpan(2, args.Length - 2).ToArray()));
+          //System.IO.File.AppendAllText("C:\\Users\\amarcolina\\Documents\\GitHub\\huh.txt", "finished loading fen");
         }
       } else {
         if (args[1] == "startpos") {
           board.LoadStartPosition();
         } else {
-          board.LoadPosition(String.Join(" ", args.AsSpan(1, idx - 1).ToArray()));
+          board.LoadPosition(String.Join(" ", args.AsSpan(2, idx - 2).ToArray()));
         }
 
         for (int i = idx + 1; i < args.Length; i++) {
@@ -96,13 +98,28 @@ namespace ChessChallenge {
       }
     }
 
+    public static string filename;
+
     public void Run() {
+      filename = "C:\\Users\\amarcolina\\Documents\\GitHub\\" + new System.Random().Next() + ".txt";
+
       while (true) {
         string line = Console.ReadLine() ?? string.Empty;
 
+        //System.IO.File.AppendAllText("C:\\Users\\amarcolina\\Documents\\GitHub\\huh.txt", line + '\n');
+
         if (line == "quit" || line == "exit")
           return;
-        ExecCommand(line);
+
+        try {
+          ExecCommand(line);
+        }catch(Exception e) {
+          System.IO.File.AppendAllText("huh.txt", e.ToString());
+        }
+
+        Console.Out.Flush();
+
+        //System.IO.File.AppendAllText("C:\\Users\\amarcolina\\Documents\\GitHub\\huh.txt", "   finished\n");
       }
     }
   }
