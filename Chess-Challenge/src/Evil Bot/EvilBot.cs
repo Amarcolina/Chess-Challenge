@@ -5,6 +5,7 @@ using ChessChallenge.API;
 namespace ChessChallenge.Example {
 
   public class EvilBot : IChessBot {
+
     Move BestMove;
 
     public Move Think(Board board, Timer timer) {
@@ -22,7 +23,9 @@ namespace ChessChallenge.Example {
           long subEval = board.IsDraw() ?
                            0 :
                           -NegaMax(-beta, -alpha, depth - 1,
-                          -eval + (move.IsCastles ? 10000 : move.IsPromotion ? 1610612736 : move.IsCapture ? 1078477616 << (int)move.CapturePieceType * 1306960869 : 0));
+                                   -eval + (move.IsCastles ? 10000 :
+                                            move.IsPromotion ? 1610612736 :
+                                            move.IsCapture ? 1078477616 << (int)move.CapturePieceType * 1306960869 : 0));
           board.UndoMove(move);
 
           if (subEval < bestFound) {
