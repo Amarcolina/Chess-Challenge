@@ -14,7 +14,7 @@ public class MyBot : IChessBot {
 
       var moves = board.GetLegalMoves();
       if (depth == maxDepth)
-        return eval - moves.Length;
+        return eval - moves.Length + board.FiftyMoveCounter;
 
       foreach (var move in moves.OrderByDescending(t => t.CapturePieceType)) {
         board.MakeMove(move);
